@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    # Industry Standard: Spin up a blank, isolated database just for testing
+    # This prevents tests from affecting your real Supabase data.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ci_tester
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ci_testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: "test"
+      # Point Prisma to the isolated test database container
+      DATABASE_URL: "postgresql://ci_tester:ci_password@localhost:5432/ci_testdb"
+      
+      # Use GitHub Secrets for external 3rd-party APIs
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Sync Database Schema
+        # Pushes the schema to the isolated test database
+        run: bunx prisma db push
+
+      - name: Generate Prisma Client
+        run: bunx prisma generate
+
+      - name: Run Tests
+        run: bun test
