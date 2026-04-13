@@ -160,21 +160,25 @@ interface ApiError {
 }
 ```
 
-### 2. Authentication
-All protected routes require an `Authorization` header with a Firebase ID Token:
+### 2. Authentication Flow (Firebase + PostgreSQL)
+Because this project uses Firebase for identity verification and PostgreSQL for application data, you must synchronize the two.
+
+1. **User signs in via Firebase** on the frontend (e.g., Flutter).
+2. **Fetch the ID Token:** `const token = await firebaseUser.getIdToken();`
+3. **Sync the User (Crucial Step):** Immediately after login/signup, the frontend MUST call `POST /apiv1/auth/sync` to create or update the user record in the local PostgreSQL database. If you skip this, relational database queries for this user will fail.
+
+All protected routes require an `Authorization` header with a Firebase ID Token. The scheme is case-insensitive (both `Bearer` and `bearer` are accepted):
 
 ```typescript
-const token = await firebaseUser.getIdToken();
-
 const response = await fetch('/apiv1/protected-route', {
   headers: {
-    'Authorization': `Bearer ${token}`
+    'Authorization': `Bearer ${token}` // 'bearer ${token}' also works
   }
 });
 ```
 
 ### 3. Error Handling
 Global errors and validation failures are mapped consistently.
-- **401 Unauthorized**: Missing or invalid Firebase token.
-- **400/422 Validation Error**: Request params/body don't match the TypeBox schema. Check `error.details` for specific field failures.
+- **401 Unauthorized**: Missing, expired, or invalid Firebase token.
+- **400/422 Validation Error**: Request params/body don't match the TypeBox schema. Check `error.details` for specific field failures. Also thrown for Prisma unique constraint violations (e.g., trying to sync an email already in use).
 - **404 Not Found**: The requested resource does not exist.

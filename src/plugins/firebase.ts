@@ -1,15 +1,15 @@
-import admin from 'firebase-admin'
+import { initializeApp, cert, getApps } from 'firebase-admin/app'
 
 // Initialize Firebase Admin SDK
 // You must set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in .env
-if (!admin.apps.length) {
+if (!getApps().length) {
   const projectId = process.env.FIREBASE_PROJECT_ID
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const privateKey = process.env.FIREBASE_PRIVATE_KEY
 
   if (projectId && clientEmail && privateKey) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
+    initializeApp({
+      credential: cert({
         projectId: projectId,
         clientEmail: clientEmail,
         // Replace literal \n with actual newlines in the private key string
@@ -21,4 +21,4 @@ if (!admin.apps.length) {
   }
 }
 
-export const firebaseAdmin = admin
+export { getApps }
