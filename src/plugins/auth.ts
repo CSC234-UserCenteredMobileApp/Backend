@@ -1,16 +1,17 @@
 import { Elysia } from 'elysia'
-import { firebaseAdmin } from './firebase'
-import { UnauthorizedError } from '../shared/errors'
+import { getApps } from './firebase'
+import { getAuth } from 'firebase-admin/auth'
+import { UnauthorizedError, AppError } from '../shared/errors'
 
 export const authPlugin = new Elysia({ name: 'plugin.auth' })
   .derive({ as: 'scoped' }, async ({ headers }) => {
     const authorization = headers['authorization']
     
-    if (!authorization || !authorization.startsWith('Bearer ')) {
+    if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
       throw new UnauthorizedError('Authorization token is missing')
     }
 
-    const token = authorization.split('Bearer ')[1]
+    const token = authorization.substring(7).trim()
 
     // Development Bypass
     if ((process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') && token === 'dev-token') {
@@ -25,8 +26,14 @@ export const authPlugin = new Elysia({ name: 'plugin.auth' })
       }
     }
 
+    // Ensure Firebase is initialized
+    if (getApps().length === 0) {
+      console.error('Firebase Admin SDK: Not initialized. Check environment variables.')
+      throw new AppError('Authentication service is currently unavailable', 500, 'FIREBASE_NOT_INITIALIZED')
+    }
+
     try {
-      const decodedToken = await firebaseAdmin.auth().verifyIdToken(token)
+      const decodedToken = await getAuth().verifyIdToken(token)
       
       return {
         user: {

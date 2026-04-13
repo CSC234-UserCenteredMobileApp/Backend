@@ -1,6 +1,6 @@
 import { db } from '../../plugins/db'
 import type { SyncUserBody, AuthUser } from './model'
-import { NotFoundError } from '../../shared/errors'
+import { NotFoundError, ValidationError } from '../../shared/errors'
 
 export class AuthService {
     /**
@@ -14,22 +14,33 @@ export class AuthService {
         const { uid, email, name: fbName } = firebaseUser
 
         if (!email) {
-            throw new Error('Email is required from Firebase token')
+            throw new ValidationError('Email is required from Firebase token to sync profile')
         }
 
-        const user = await db.user.upsert({
-            where: { firebaseUid: uid },
-            update: {
-                name: additionalData.name || fbName || undefined
-            },
-            create: {
-                firebaseUid: uid,
-                email: email,
-                name: additionalData.name || fbName || null
-            }
-        })
+        try {
+            const user = await db.user.upsert({
+                where: { firebaseUid: uid },
+                update: {
+                    name: additionalData.name || fbName || undefined
+                },
+                create: {
+                    firebaseUid: uid,
+                    email: email,
+                    name: additionalData.name || fbName || null
+                }
+            })
 
-        return user as AuthUser
+            return user as AuthUser
+        } catch (error: any) {
+            // Handle Prisma unique constraint violation (P2002)
+            if (error.code === 'P2002') {
+                const target = error.meta?.target || []
+                if (target.includes('email')) {
+                    throw new ValidationError('This email address is already registered to a different account')
+                }
+            }
+            throw error
+        }
     }
 
     /**

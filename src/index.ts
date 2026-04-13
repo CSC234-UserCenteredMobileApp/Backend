@@ -4,9 +4,10 @@ import { storageController } from './modules/storage'
 import { exampleController } from './modules/example'
 import { errorHandler } from './plugins/error-handler'
 import { swaggerPlugin } from './plugins/swagger'
-
+import { cors } from '@elysiajs/cors';
 const app = new Elysia()
   // Global plugins
+  .use(cors())
   .use(swaggerPlugin)
   .use(errorHandler)
   // Register feature modules

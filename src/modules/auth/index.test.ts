@@ -64,6 +64,21 @@ describe('Auth Module', () => {
         expect(result.data.email).toBe(MOCK_EMAIL)
     })
 
+    it('GET /auth/me should work with lowercase bearer token scheme', async () => {
+        const response = await app.handle(
+            new Request('http://localhost/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'bearer dev-token'
+                }
+            })
+        )
+
+        const result = (await response.json()) as any
+        expect(response.status).toBe(200)
+        expect(result.success).toBe(true)
+    })
+
     it('GET /auth/me should return 401 without token', async () => {
         const response = await app.handle(
             new Request('http://localhost/auth/me', {
