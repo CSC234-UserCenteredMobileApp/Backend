@@ -3,17 +3,19 @@ import { describe, it, expect, mock } from 'bun:test';
 // 1. Mock the Firebase Admin plugin before importing the application components
 // This prevents the tests from making actual network requests to Firebase.
 mock.module('../../plugins/firebase', () => ({
-  firebaseAdmin: {
-    auth: () => ({
-      verifyIdToken: async (token: string) => {
-        if (token === 'valid-token') {
-          // Return a mock decoded Firebase token
-          return { uid: 'user123', email: 'test@example.com' };
-        }
-        throw new Error('Invalid token');
+  getApps: () => [{}]
+}));
+
+mock.module('firebase-admin/auth', () => ({
+  getAuth: () => ({
+    verifyIdToken: async (token: string) => {
+      if (token === 'valid-token') {
+        // Return a mock decoded Firebase token
+        return { uid: 'user123', email: 'test@example.com' };
       }
-    })
-  }
+      throw new Error('Invalid token');
+    }
+  })
 }));
 
 import { Elysia } from 'elysia';
